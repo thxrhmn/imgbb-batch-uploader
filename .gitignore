@@ -1,0 +1,8 @@
+obj.js
+.env
+node_modules
+images
+csvWriter.js
+*.csv
+response.json
+*.txt
