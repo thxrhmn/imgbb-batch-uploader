@@ -2,10 +2,10 @@ const axios = require("axios");
 const FormData = require("form-data");
 const fs = require("fs");
 const csv = require("fast-csv");
-require('dotenv').config();
+require("dotenv").config();
 
+let allFiles = [];
 const API_KEY = process.env.API_KEY;
-const allFiles = [];
 const uploadedFiles = [];
 const csvName = "data.csv";
 const dirPath = "./images";
@@ -13,8 +13,7 @@ const dirPath = "./images";
 const postImg = async (imgPath) => {
   const form = new FormData();
   const imgData = fs.readFileSync(imgPath);
-  const imgPathSplit = imgPath.split("/");
-  const imgName = imgPathSplit[imgPathSplit.length - 1];
+  const imgName = imgPath.split("/").pop();
   form.append("image", imgData, { filename: imgName });
 
   try {
@@ -32,39 +31,55 @@ const postImg = async (imgPath) => {
       `${response.data.status} | ${response.data.success} | ${response.data.data.display_url}`
     );
 
+    const { data: responseData } = response.data;
+
+    const {
+      id,
+      title,
+      url_viewer,
+      display_url,
+      width,
+      height,
+      time,
+      expiration,
+      image,
+      thumb,
+      medium,
+      delete_url,
+    } = responseData;
+
     const obj = {
-        id: response.data.data.id,
-        title: response.data.data.title,
-        url_viewer: response.data.data.url_viewer,
-        display_url: response.data.data.display_url,
-        width: response.data.data.width,
-        height: response.data.data.height,
-        time: response.data.data.time,
-        expiration: response.data.data.expiration,
-        image_filename: response.data.data.image.filename,
-        image_name: response.data.data.image.name, 
-        image_mime: response.data.data.image.mime, 
-        image_extension: response.data.data.image.extension, 
-        image_url: response.data.data.image.url, 
-        thumb_filename: response.data.data.thumb.filename,
-        thumb_name: response.data.data.thumb.name, 
-        thumb_mime: response.data.data.thumb.mime, 
-        thumb_extension: response.data.data.thumb.extension, 
-        thumb_url: response.data.data.thumb.url, 
-        medium_filename: response.data.data.medium.filename,
-        medium_name: response.data.data.medium.name, 
-        medium_mime: response.data.data.medium.mime, 
-        medium_extension: response.data.data.medium.extension, 
-        medium_url: response.data.data.thumb.url, 
-        delete_url: response.data.data.delete_url, 
+      id,
+      title,
+      url_viewer,
+      display_url,
+      width,
+      height,
+      time,
+      expiration,
+      image_filename: image.filename,
+      image_name: image.name,
+      image_mime: image.mime,
+      image_extension: image.extension,
+      image_url: image.url,
+      thumb_filename: thumb.filename,
+      thumb_name: thumb.name,
+      thumb_mime: thumb.mime,
+      thumb_extension: thumb.extension,
+      thumb_url: thumb.url,
+      medium_filename: medium.filename,
+      medium_name: medium.name,
+      medium_mime: medium.mime,
+      medium_extension: medium.extension,
+      medium_url: medium.url,
+      delete_url,
+    };
+
+    uploadedFiles.push(obj);
+
+    if (uploadedFiles.length === allFiles.length) {
+      saveToCsv(csvName, uploadedFiles);
     }
-
-    uploadedFiles.push(obj)
-
-    if (uploadedFiles.length === allFiles.length){
-        saveToCsv(csvName, uploadedFiles)
-    }
-
   } catch (err) {
     console.log(err);
   }
@@ -93,26 +108,19 @@ const saveToCsv = (filename, arrData) => {
   });
 };
 
-const getFilesInDir = (folderPath) => {
+const getFilesInDir = async (folderPath) => {
   // Membaca isi folder
-  fs.readdir(folderPath, async (err, files) => {
-    if (err) {
-      console.error("Terjadi kesalahan:", err);
-      return;
+  try {
+    const files = await fs.promises.readdir(folderPath);
+    allFiles = files;
+    console.log("allfiles:: ", files);
+
+    for (const file of files) {
+      await postImg(`${folderPath}/${file}`);
     }
-
-    // Menampilkan daftar file dalam folder
-    files.forEach((file) => {
-      allFiles.push(file);
-    });
-
-    console.log("allfiles:: ", allFiles);
-
-    for (const file of allFiles) {
-        await postImg(`./images/${file}`);
-      }
-  });
-
+  } catch (err) {
+    console.error("Terjadi kesalahan:", err);
+  }
 };
 
 getFilesInDir(dirPath);
